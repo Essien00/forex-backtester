@@ -100,6 +100,13 @@
   }
   .scale-btn:active{ color:var(--amber); border-color:var(--amber); }
 
+  .debug-readout{
+    position:absolute; top:8px; left:8px; z-index:6;
+    background:rgba(19,24,34,.85); border:1px solid var(--border); border-radius:6px;
+    color:var(--text-dim); font-size:9px; font-family:monospace; padding:3px 6px;
+    pointer-events:none;
+  }
+
   /* ---------- Bottom nav (compact quick-access bar) ---------- */
   .bottom-nav{
     display:flex; flex-shrink:0; background:var(--panel); border-top:1px solid var(--border);
@@ -220,7 +227,7 @@
 <div id="app">
 
   <header>
-    <h1>Forex <span>Backtester</span> &amp; Replay</h1>
+    <h1>Forex <span>Backtester</span> &amp; Replay <span id="buildTag" style="color:var(--text-dim);font-size:9px;font-weight:400;">v1.4</span></h1>
     <button class="icon-btn" id="settingsBtn" title="Settings">&#9881;</button>
   </header>
 
@@ -247,6 +254,7 @@
       <button class="scale-btn" id="autoScaleBtn" title="Auto price scale">&#8597;</button>
       <button class="scale-btn" id="fitChartBtn" title="Fit chart">&#10530;</button>
     </div>
+    <div class="debug-readout" id="debugReadout">tool:- touch:0 draw:0</div>
 
     <!-- Compact chart-tools drawer: hidden until the FAB is tapped, so it
          never permanently consumes chart space -->
@@ -1034,6 +1042,19 @@ let draftDrawing = null;  // in-progress 2-point shape while finger is down: {ty
 let idCounter = 1;
 const HIT_TOLERANCE = 14; // px, for the eraser tool
 
+/* ---------- temporary on-screen diagnostics ----------
+   Shows live counts of touchstart events reaching the canvas vs.
+   drawings actually created, so we can tell from a screenshot whether
+   touches are reaching the canvas at all, or reaching it but failing
+   to convert to a valid time/price. Safe to remove once confirmed working. */
+let dbgTouches = 0, dbgDraws = 0;
+const debugReadout = document.getElementById("debugReadout");
+function updateDebugReadout(){
+  if(!debugReadout) return;
+  debugReadout.textContent = "tool:" + (activeTool || "-") + " touch:" + dbgTouches + " draw:" + dbgDraws;
+}
+updateDebugReadout();
+
 window.clearDrawings = function(){ drawings = []; draftDrawing = null; };
 
 /* ---------- sizing: keep the overlay canvas pixel-matched to the chart ---------- */
@@ -1193,6 +1214,7 @@ function activateTool(t){
   toolFab.classList.add("active");
   toolFab.innerHTML = "&#10005;";
   document.querySelectorAll(".tool-btn[data-tool]").forEach(b => b.classList.toggle("selected", b.dataset.tool === t));
+  updateDebugReadout();
 }
 function deactivateTool(){
   activeTool = null;
@@ -1201,6 +1223,7 @@ function deactivateTool(){
   toolFab.classList.remove("active");
   toolFab.innerHTML = "&#9998;";
   document.querySelectorAll(".tool-btn[data-tool]").forEach(b => b.classList.remove("selected"));
+  updateDebugReadout();
 }
 
 toolFab.addEventListener("click", () => {
@@ -1237,6 +1260,7 @@ function localXYFromClient(clientX, clientY){
 
 function handleDrawStart(clientX, clientY){
   if(!activeTool) return;
+  dbgTouches++; updateDebugReadout();
   const { x, y } = localXYFromClient(clientX, clientY);
 
   if(activeTool === "erase"){ eraseAt(x, y); return; }
@@ -1246,12 +1270,16 @@ function handleDrawStart(clientX, clientY){
 
   if(activeTool === "hline"){
     drawings.push({ id: idCounter++, type: "hline", p1: { time, price } });
+    dbgDraws++; updateDebugReadout();
     deactivateTool();
     return;
   }
   if(activeTool === "text"){
     const txt = window.prompt("Label text:", "");
-    if(txt){ drawings.push({ id: idCounter++, type: "text", p1: { time, price }, text: txt }); }
+    if(txt){
+      drawings.push({ id: idCounter++, type: "text", p1: { time, price }, text: txt });
+      dbgDraws++; updateDebugReadout();
+    }
     deactivateTool();
     return;
   }
@@ -1270,6 +1298,7 @@ function handleDrawEnd(clientX, clientY){
   const time = xToTime(x), price = yToPrice(y);
   if(time !== null && price !== null){
     drawings.push({ id: idCounter++, type: draftDrawing.type, p1: draftDrawing.p1, p2: { time, price } });
+    dbgDraws++; updateDebugReadout();
   }
   draftDrawing = null;
   deactivateTool();
