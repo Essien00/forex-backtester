@@ -31,29 +31,29 @@
 
   header{
     display:flex; align-items:center; justify-content:space-between;
-    padding:10px 12px; background:var(--panel); border-bottom:1px solid var(--border);
+    padding:6px 10px; background:var(--panel); border-bottom:1px solid var(--border);
     flex-shrink:0;
   }
-  header h1{ font-size:15px; font-weight:600; margin:0; letter-spacing:.2px; }
+  header h1{ font-size:13px; font-weight:600; margin:0; letter-spacing:.2px; }
   header h1 span{ color:var(--amber); }
   .icon-btn{
     background:none; border:1px solid var(--border); color:var(--text-dim);
-    width:34px; height:34px; border-radius:8px; font-size:16px; cursor:pointer;
+    width:30px; height:30px; border-radius:8px; font-size:15px; cursor:pointer;
   }
 
   .toolbar{
-    display:flex; gap:8px; padding:8px 10px; background:var(--panel);
+    display:flex; gap:6px; padding:6px 10px; background:var(--panel);
     border-bottom:1px solid var(--border); overflow-x:auto; flex-shrink:0;
   }
   select, input[type=datetime-local], input[type=number]{
     background:var(--panel-2); color:var(--text); border:1px solid var(--border);
-    border-radius:8px; padding:8px 10px; font-size:14px; min-height:38px;
+    border-radius:8px; padding:7px 9px; font-size:13px; min-height:34px;
   }
-  select{ flex:1; min-width:90px; }
+  select{ flex:1; min-width:84px; }
 
   .mode-badge{
-    display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:8px;
-    font-size:12px; font-weight:600; white-space:nowrap;
+    display:flex; align-items:center; gap:6px; padding:0 9px; border-radius:8px;
+    font-size:11px; font-weight:600; white-space:nowrap;
   }
   .mode-live{ background:rgba(45,212,167,.12); color:var(--buy); }
   .mode-replay{ background:rgba(232,163,61,.14); color:var(--amber); }
@@ -61,23 +61,59 @@
   #chart-wrap{ position:relative; flex:1; min-height:0; }
   #chart{ position:absolute; inset:0; }
 
+  /* ---------- Bottom nav (compact quick-access bar) ---------- */
+  .bottom-nav{
+    display:flex; flex-shrink:0; background:var(--panel); border-top:1px solid var(--border);
+    padding-bottom:env(safe-area-inset-bottom, 0);
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px; padding:8px 2px 7px; background:none; border:none; color:var(--text-dim);
+    font-size:10.5px; font-weight:600; cursor:pointer; position:relative;
+  }
+  .nav-btn .ic{ font-size:17px; line-height:1; }
+  .nav-btn.active{ color:var(--amber); }
+  .nav-btn .dot{
+    position:absolute; top:5px; right:calc(50% - 16px); width:6px; height:6px; border-radius:50%;
+    background:var(--buy); display:none;
+  }
+  .nav-btn .dot.show{ display:block; }
+
+  /* ---------- Bottom sheets (overlay, don't resize the chart) ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40;
+    opacity:0; pointer-events:none; transition:opacity .18s;
+  }
+  .sheet-backdrop.show{ opacity:1; pointer-events:auto; }
+
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:41;
+    background:var(--panel); border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0; max-height:76vh; display:flex; flex-direction:column;
+    transform:translateY(100%); transition:transform .2s ease-out;
+    box-shadow:0 -8px 24px rgba(0,0,0,.35);
+    padding-bottom:env(safe-area-inset-bottom, 0);
+    pointer-events:none;
+  }
+  .sheet.open{ transform:translateY(0); pointer-events:auto; }
+  .sheet-handle{ width:36px; height:4px; border-radius:3px; background:var(--border); margin:8px auto 2px; flex-shrink:0; }
+  .sheet-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 14px 8px; flex-shrink:0; border-bottom:1px solid var(--border);
+  }
+  .sheet-header b{ font-size:14px; }
+  .sheet-close{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim);
+    width:28px; height:28px; border-radius:50%; font-size:14px; cursor:pointer; line-height:1;
+  }
+  .sheet-body{ padding:12px 14px 16px; overflow-y:auto; }
+
   .banner{
     position:absolute; top:8px; left:50%; transform:translateX(-50%);
     background:rgba(232,163,61,.95); color:#1a1200; font-size:12px; font-weight:700;
     padding:5px 12px; border-radius:20px; z-index:5; display:none; pointer-events:none;
   }
   .banner.show{ display:block; }
-
-  .panel{ background:var(--panel); border-top:1px solid var(--border); flex-shrink:0; }
-  .panel-header{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:9px 12px; cursor:pointer; user-select:none;
-  }
-  .panel-header b{ font-size:13px; }
-  .panel-header .chev{ color:var(--text-dim); font-size:11px; transition:transform .15s; }
-  .panel-body{ padding:0 12px 12px; }
-  .panel.collapsed .panel-body{ display:none; }
-  .panel.collapsed .chev{ transform:rotate(-90deg); }
 
   .replay-row{ display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
   .replay-row input[type=datetime-local]{ flex:1; min-width:170px; }
@@ -131,9 +167,17 @@
   .modal .btn-row{ margin-top:4px; }
   a{ color:var(--amber); }
   .small-note{ font-size:11px; color:var(--text-dim); margin-top:8px; line-height:1.4; }
+  .fatal-error{
+    position:fixed; left:10px; right:10px; bottom:70px; z-index:100;
+    background:#3a0d16; border:1px solid var(--sell); color:#ffd9e0;
+    font-size:11px; line-height:1.4; padding:10px 12px; border-radius:10px;
+    max-height:40vh; overflow-y:auto; font-family:monospace; display:none;
+  }
+  .fatal-error.show{ display:block; }
 </style>
 </head>
 <body>
+<div id="fatalError" class="fatal-error"></div>
 <div id="app">
 
   <header>
@@ -160,78 +204,94 @@
     <div class="banner" id="loadingBanner">Loading data…</div>
   </div>
 
-  <!-- REPLAY PANEL -->
-  <div class="panel" id="replayPanel">
-    <div class="panel-header" data-target="replayBody">
-      <b>Replay Controls</b><span class="chev">&#9660;</span>
-    </div>
-    <div class="panel-body" id="replayBody">
-      <div class="replay-row">
-        <input type="datetime-local" id="replayDate" />
-        <button class="btn btn-amber" id="startReplayBtn">Start Replay</button>
-      </div>
-      <div class="btn-row" id="replayControlsRow" style="display:none;">
-        <button class="btn" id="playPauseBtn">&#9654; Play</button>
-        <button class="btn" id="stepBtn">Step &#9654;&#9654;</button>
-        <select id="speedSelect" style="flex:1;">
-          <option value="2000">0.5x</option>
-          <option value="1000" selected>1x</option>
-          <option value="400">2x</option>
-          <option value="150">5x</option>
-        </select>
-        <button class="btn btn-ghost" id="exitReplayBtn">Exit</button>
-      </div>
-    </div>
+  <!-- BOTTOM NAV: quick access to Replay / Trade / Stats / Settings without
+       any of them permanently occupying chart space -->
+  <div class="bottom-nav">
+    <button class="nav-btn" id="navReplayBtn" data-sheet="replaySheet">
+      <span class="ic">&#9199;</span>Replay
+    </button>
+    <button class="nav-btn" id="navTradeBtn" data-sheet="tradeSheet">
+      <span class="ic">&#8644;</span>Trade<span class="dot" id="tradeDot"></span>
+    </button>
+    <button class="nav-btn" id="navStatsBtn" data-sheet="statsSheet">
+      <span class="ic">&#128202;</span>Stats
+    </button>
+    <button class="nav-btn" id="navSettingsBtn">
+      <span class="ic">&#9881;</span>Settings
+    </button>
   </div>
 
-  <!-- TRADE PANEL -->
-  <div class="panel" id="tradePanel">
-    <div class="panel-header" data-target="tradeBody">
-      <b>Manual Trade</b><span class="chev">&#9660;</span>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+<!-- REPLAY SHEET -->
+<div class="sheet" id="replaySheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><b>Replay Controls</b><button class="sheet-close" data-close-sheet>&times;</button></div>
+  <div class="sheet-body">
+    <div class="replay-row">
+      <input type="datetime-local" id="replayDate" />
+      <button class="btn btn-amber" id="startReplayBtn">Start Replay</button>
     </div>
-    <div class="panel-body" id="tradeBody">
-      <div class="position-card" id="positionCard">
-        <div class="row"><span>Direction</span><span id="posDir" class="dir-buy">BUY</span></div>
-        <div class="row"><span>Entry</span><span id="posEntry">-</span></div>
-        <div class="row"><span>SL / TP</span><span id="posSlTp">-</span></div>
-        <div class="row"><span>Current</span><span id="posCurrent">-</span></div>
-        <div class="row"><span>Floating P/L</span><span id="posPl">-</span></div>
-        <button class="btn btn-ghost" id="closeManualBtn" style="width:100%;margin-top:8px;">Close Manually</button>
-      </div>
-      <div class="trade-grid">
-        <div class="field"><label>Entry Price</label><input type="number" step="any" id="entryInput" placeholder="auto"></div>
-        <div class="field"><label>Lot (units)</label><input type="number" step="any" id="lotInput" value="1"></div>
-        <div class="field"><label>Stop Loss</label><input type="number" step="any" id="slInput"></div>
-        <div class="field"><label>Take Profit</label><input type="number" step="any" id="tpInput"></div>
-      </div>
-      <div class="buysell">
-        <button class="btn btn-buy" id="buyBtn">BUY</button>
-        <button class="btn btn-sell" id="sellBtn">SELL</button>
-      </div>
-      <div class="small-note">Trading is only active while in Replay mode. Entry price defaults to the current replay candle's close if left blank.</div>
+    <div class="btn-row" id="replayControlsRow" style="display:none;">
+      <button class="btn" id="playPauseBtn">&#9654; Play</button>
+      <button class="btn" id="stepBtn">Step &#9654;&#9654;</button>
+      <select id="speedSelect" style="flex:1;">
+        <option value="2000">0.5x</option>
+        <option value="1000" selected>1x</option>
+        <option value="400">2x</option>
+        <option value="150">5x</option>
+      </select>
+      <button class="btn btn-ghost" id="exitReplayBtn">Exit</button>
     </div>
   </div>
+</div>
 
-  <!-- STATS PANEL -->
-  <div class="panel collapsed" id="statsPanel">
-    <div class="panel-header" data-target="statsBody">
-      <b>Statistics</b><span class="chev">&#9660;</span>
+<!-- TRADE SHEET -->
+<div class="sheet" id="tradeSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><b>Manual Trade</b><button class="sheet-close" data-close-sheet>&times;</button></div>
+  <div class="sheet-body">
+    <div class="position-card" id="positionCard">
+      <div class="row"><span>Direction</span><span id="posDir" class="dir-buy">BUY</span></div>
+      <div class="row"><span>Entry</span><span id="posEntry">-</span></div>
+      <div class="row"><span>SL / TP</span><span id="posSlTp">-</span></div>
+      <div class="row"><span>Current</span><span id="posCurrent">-</span></div>
+      <div class="row"><span>Floating P/L</span><span id="posPl">-</span></div>
+      <button class="btn btn-ghost" id="closeManualBtn" style="width:100%;margin-top:8px;">Close Manually</button>
     </div>
-    <div class="panel-body" id="statsBody">
-      <div class="stats-grid">
-        <div class="stat"><div class="v" id="statTrades">0</div><div class="l">Trades</div></div>
-        <div class="stat"><div class="v" id="statWins">0</div><div class="l">Wins</div></div>
-        <div class="stat"><div class="v" id="statLosses">0</div><div class="l">Losses</div></div>
-        <div class="stat"><div class="v" id="statWinrate">0%</div><div class="l">Win Rate</div></div>
-      </div>
-      <div class="stat" style="margin-bottom:8px;"><div class="v" id="statPl">0.00</div><div class="l">Total P/L</div></div>
-      <div class="history-list" id="historyList">
-        <div class="history-empty">No trades yet</div>
-      </div>
-      <button class="btn btn-ghost" id="resetStatsBtn" style="width:100%;margin-top:8px;">Reset Stats</button>
+    <div class="trade-grid">
+      <div class="field"><label>Entry Price</label><input type="number" step="any" id="entryInput" placeholder="auto"></div>
+      <div class="field"><label>Lot (units)</label><input type="number" step="any" id="lotInput" value="1"></div>
+      <div class="field"><label>Stop Loss</label><input type="number" step="any" id="slInput"></div>
+      <div class="field"><label>Take Profit</label><input type="number" step="any" id="tpInput"></div>
     </div>
+    <div class="buysell">
+      <button class="btn btn-buy" id="buyBtn">BUY</button>
+      <button class="btn btn-sell" id="sellBtn">SELL</button>
+    </div>
+    <div class="small-note">Trading is only active while in Replay mode. Entry price defaults to the current replay candle's close if left blank.</div>
   </div>
+</div>
 
+<!-- STATS SHEET -->
+<div class="sheet" id="statsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header"><b>Statistics</b><button class="sheet-close" data-close-sheet>&times;</button></div>
+  <div class="sheet-body">
+    <div class="stats-grid">
+      <div class="stat"><div class="v" id="statTrades">0</div><div class="l">Trades</div></div>
+      <div class="stat"><div class="v" id="statWins">0</div><div class="l">Wins</div></div>
+      <div class="stat"><div class="v" id="statLosses">0</div><div class="l">Losses</div></div>
+      <div class="stat"><div class="v" id="statWinrate">0%</div><div class="l">Win Rate</div></div>
+    </div>
+    <div class="stat" style="margin-bottom:8px;"><div class="v" id="statPl">0.00</div><div class="l">Total P/L</div></div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">No trades yet</div>
+    </div>
+    <button class="btn btn-ghost" id="resetStatsBtn" style="width:100%;margin-top:8px;">Reset Stats</button>
+  </div>
 </div>
 
 <!-- SETTINGS MODAL -->
@@ -251,7 +311,29 @@
 </div>
 
 <script>
-(function(){
+// Global error surfacing: if anything below throws, show the exact
+// message on-screen instead of failing silently with no way to diagnose
+// it on a phone (no devtools access). This does NOT change any app logic.
+function showFatalError(context, err){
+  const el = document.getElementById("fatalError");
+  if(!el) return;
+  const msg = (err && (err.stack || err.message)) || String(err);
+  el.textContent = "[" + context + "] " + msg;
+  el.classList.add("show");
+  console.error(context, err);
+}
+window.addEventListener("error", e => showFatalError("window.onerror", e.error || e.message));
+window.addEventListener("unhandledrejection", e => showFatalError("unhandled promise", e.reason));
+</script>
+
+<!-- Script #1: data provider + chart engine. Kept isolated in its own
+     <script> tag so that if anything in the UI-wiring script below ever
+     throws, the chart and data layer have already finished initializing
+     and are unaffected (classic <script> tags run independently; a
+     failure in one does not stop the next one from running). Top-level
+     const/let/class declared here are still visible to script #2 below
+     because sibling classic scripts in the same page share one scope. -->
+<script>
 "use strict";
 
 /* ============================================================
@@ -417,6 +499,14 @@ window.addEventListener("orientationchange", () => setTimeout(resizeChartToConta
 // the address bar settles) — re-measure a moment after load as a safety net.
 setTimeout(resizeChartToContainer, 300);
 setTimeout(resizeChartToContainer, 1000);
+</script>
+
+<!-- Script #2: UI wiring (bottom sheets, replay/trade/stats controls,
+     settings, market/timeframe switching, init). Runs as its own
+     top-level script so a failure here can't prevent script #1 above
+     (chart + data engine) from having already run. -->
+<script>
+"use strict";
 
 /* ============================================================
    UI HELPERS
@@ -426,11 +516,47 @@ const banner = $("loadingBanner");
 function showBanner(msg){ banner.textContent = msg; banner.classList.add("show"); }
 function hideBanner(){ banner.classList.remove("show"); }
 
-document.querySelectorAll(".panel-header").forEach(h => {
-  h.addEventListener("click", () => {
-    h.parentElement.classList.toggle("collapsed");
+/* ============================================================
+   BOTTOM SHEETS (Replay / Trade / Stats)
+   Pure UI wiring — opens/closes overlays that float above the
+   chart. The chart element's own size never changes when a sheet
+   opens or closes, so no resize call is needed for that case;
+   resizeChartToContainer() (defined above) still runs for real
+   size changes: orientation flips and viewport/keyboard changes.
+   Wrapped in its own try/catch so a problem here (e.g. a missing
+   element) can't prevent the replay/trade/stats/settings wiring
+   further down this script from running.
+   ============================================================ */
+try{
+  const sheetBackdrop = $("sheetBackdrop");
+  const allSheets = Array.from(document.querySelectorAll(".sheet"));
+  const allNavBtns = Array.from(document.querySelectorAll(".nav-btn[data-sheet]"));
+
+  function closeAllSheets(){
+    allSheets.forEach(s => s.classList.remove("open"));
+    allNavBtns.forEach(b => b.classList.remove("active"));
+    sheetBackdrop.classList.remove("show");
+  }
+
+  function openSheet(id){
+    const alreadyOpen = $(id).classList.contains("open");
+    closeAllSheets();
+    if(alreadyOpen) return; // tapping the same nav button again just closes it
+    $(id).classList.add("open");
+    sheetBackdrop.classList.add("show");
+    const btn = allNavBtns.find(b => b.dataset.sheet === id);
+    if(btn) btn.classList.add("active");
+  }
+
+  allNavBtns.forEach(btn => {
+    btn.addEventListener("click", () => openSheet(btn.dataset.sheet));
   });
-});
+  document.querySelectorAll("[data-close-sheet]").forEach(btn => {
+    btn.addEventListener("click", closeAllSheets);
+  });
+  sheetBackdrop.addEventListener("click", closeAllSheets);
+  $("navSettingsBtn").addEventListener("click", () => { closeAllSheets(); openSettings(); });
+}catch(err){ showFatalError("bottom sheet wiring", err); }
 
 // Different markets need different decimal precision to look like a real
 // price feed (gold to 2dp, a forex pair to 5dp, crypto to 2dp).
@@ -706,8 +832,9 @@ $("closeManualBtn").addEventListener("click", () => {
 function updatePositionCard(candle){
   const card = $("positionCard");
   const pos = state.position;
-  if(!pos){ card.classList.remove("show"); return; }
+  if(!pos){ card.classList.remove("show"); $("tradeDot").classList.remove("show"); return; }
   card.classList.add("show");
+  $("tradeDot").classList.add("show");
   $("posDir").textContent = pos.direction;
   $("posDir").className = pos.direction === "BUY" ? "dir-buy" : "dir-sell";
   $("posEntry").textContent = pos.entry.toFixed(2);
@@ -817,8 +944,6 @@ function resetTradingState(){
     loadLiveData();
   }
   renderStats();
-})();
-
 })();
 </script>
 </body>
