@@ -88,6 +88,18 @@
   .tool-btn.selected{ background:rgba(232,163,61,.14); color:var(--amber); border-color:var(--amber); }
   .tool-btn.tool-danger{ color:var(--sell); }
 
+  /* ---------- Compact chart-scale actions (top-right corner) ---------- */
+  .scale-actions{
+    position:absolute; top:8px; right:8px; z-index:6;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .scale-btn{
+    width:30px; height:30px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(19,24,34,.85); color:var(--text-dim); font-size:13px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .scale-btn:active{ color:var(--amber); border-color:var(--amber); }
+
   /* ---------- Bottom nav (compact quick-access bar) ---------- */
   .bottom-nav{
     display:flex; flex-shrink:0; background:var(--panel); border-top:1px solid var(--border);
@@ -230,6 +242,11 @@
     <div id="chart"></div>
     <canvas id="drawCanvas"></canvas>
     <div class="banner" id="loadingBanner">Loading data…</div>
+
+    <div class="scale-actions">
+      <button class="scale-btn" id="autoScaleBtn" title="Auto price scale">&#8597;</button>
+      <button class="scale-btn" id="fitChartBtn" title="Fit chart">&#10530;</button>
+    </div>
 
     <!-- Compact chart-tools drawer: hidden until the FAB is tapped, so it
          never permanently consumes chart space -->
@@ -516,7 +533,12 @@ const chart = LightweightCharts.createChart(chartEl, {
     barSpacing: 9, minBarSpacing: 3, rightOffset: 4, fixLeftEdge: true
   },
   crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-  handleScroll: { vertTouchDrag: false },
+  handleScroll: { vertTouchDrag: false, horzTouchDrag: true, mouseWheel: true, pressedMouseMove: true },
+  handleScale: {
+    axisPressedMouseMove: { time: true, price: true },
+    axisDoubleClickReset: { time: true, price: true },
+    mouseWheel: true, pinch: true
+  },
   autoSize: false
 });
 const candleSeries = chart.addCandlestickSeries({
@@ -1199,17 +1221,23 @@ document.querySelectorAll(".tool-btn[data-tool]").forEach(btn => {
   });
 });
 
-/* ---------- touch/pointer drawing on the chart ---------- */
-function localXY(e){
+/* ---------- touch/mouse drawing on the chart -----------
+   Rewritten to use native touch events (touchstart/move/end) as the
+   primary mechanism instead of Pointer Events. Pointer Events have
+   inconsistent support across the various Android browser apps this
+   project has been tested in — a tool could visually "select" (pure
+   JS/CSS) while the canvas silently never received a pointerdown at
+   all. Touch events are the most universally supported gesture API on
+   Android WebViews, so they're the reliable choice here. Mouse events
+   are kept as a separate, independent fallback for desktop testing. */
+function localXYFromClient(clientX, clientY){
   const rect = drawCanvas.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
-drawCanvas.addEventListener("pointerdown", e => {
+function handleDrawStart(clientX, clientY){
   if(!activeTool) return;
-  e.preventDefault();
-  try{ drawCanvas.setPointerCapture(e.pointerId); }catch(err){}
-  const { x, y } = localXY(e);
+  const { x, y } = localXYFromClient(clientX, clientY);
 
   if(activeTool === "erase"){ eraseAt(x, y); return; }
 
@@ -1229,25 +1257,81 @@ drawCanvas.addEventListener("pointerdown", e => {
   }
   // two-point tools: trend / rect / ray / arrow
   draftDrawing = { type: activeTool, p1: { time, price }, p2: { x, y } };
-}, { passive: false });
+}
 
-drawCanvas.addEventListener("pointermove", e => {
+function handleDrawMove(clientX, clientY){
   if(!draftDrawing) return;
-  e.preventDefault();
-  draftDrawing.p2 = localXY(e);
-}, { passive: false });
+  draftDrawing.p2 = localXYFromClient(clientX, clientY);
+}
 
-drawCanvas.addEventListener("pointerup", e => {
+function handleDrawEnd(clientX, clientY){
   if(!draftDrawing) return;
-  const { x, y } = localXY(e);
+  const { x, y } = localXYFromClient(clientX, clientY);
   const time = xToTime(x), price = yToPrice(y);
   if(time !== null && price !== null){
     drawings.push({ id: idCounter++, type: draftDrawing.type, p1: draftDrawing.p1, p2: { time, price } });
   }
   draftDrawing = null;
   deactivateTool();
+}
+
+// --- Touch (primary — real Android touchscreens) ---
+drawCanvas.addEventListener("touchstart", e => {
+  if(!activeTool) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleDrawStart(t.clientX, t.clientY);
+}, { passive: false });
+
+drawCanvas.addEventListener("touchmove", e => {
+  if(!draftDrawing) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleDrawMove(t.clientX, t.clientY);
+}, { passive: false });
+
+drawCanvas.addEventListener("touchend", e => {
+  if(!draftDrawing && activeTool !== "erase") return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  handleDrawEnd(t.clientX, t.clientY);
+}, { passive: false });
+
+drawCanvas.addEventListener("touchcancel", () => { draftDrawing = null; });
+
+// --- Mouse (independent fallback for desktop/trackpad testing) ---
+let mouseDrawing = false;
+drawCanvas.addEventListener("mousedown", e => {
+  if(!activeTool) return;
+  mouseDrawing = true;
+  handleDrawStart(e.clientX, e.clientY);
 });
-drawCanvas.addEventListener("pointercancel", () => { draftDrawing = null; deactivateTool(); });
+drawCanvas.addEventListener("mousemove", e => {
+  if(!mouseDrawing) return;
+  handleDrawMove(e.clientX, e.clientY);
+});
+window.addEventListener("mouseup", e => {
+  if(!mouseDrawing) return;
+  mouseDrawing = false;
+  handleDrawEnd(e.clientX, e.clientY);
+});
+
+/* ---------- chart-scale convenience actions ---------- */
+const autoScaleBtn = document.getElementById("autoScaleBtn");
+const fitChartBtn = document.getElementById("fitChartBtn");
+if(autoScaleBtn){
+  autoScaleBtn.addEventListener("click", () => {
+    try{ chart.priceScale("right").applyOptions({ autoScale: true }); }catch(e){}
+  });
+}
+if(fitChartBtn){
+  fitChartBtn.addEventListener("click", () => {
+    try{
+      chart.timeScale().fitContent();
+      chart.priceScale("right").applyOptions({ autoScale: true });
+    }catch(e){}
+  });
+}
 
 }catch(err){ if(typeof showFatalError === "function") showFatalError("drawing tools", err); }
 </script>
