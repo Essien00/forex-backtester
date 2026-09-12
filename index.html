@@ -27,7 +27,7 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior:none;
   }
-  #app{ display:flex; flex-direction:column; height:100vh; height:100dvh; }
+  #app{ display:flex; flex-direction:column; height:100vh; height:calc(var(--vh, 1vh) * 100); }
 
   header{
     display:flex; align-items:center; justify-content:space-between;
@@ -371,25 +371,52 @@ const state = {
 /* ============================================================
    CHART SETUP
    ============================================================ */
+// Fix for mobile browsers where 100vh includes space hidden behind the
+// address bar, which can collapse flex children (like the chart) to zero
+// height until "desktop site" mode forces a fixed viewport. We measure the
+// real visible height in JS and expose it as a CSS variable instead.
+function setRealViewportHeight(){
+  document.documentElement.style.setProperty("--vh", (window.innerHeight * 0.01) + "px");
+}
+setRealViewportHeight();
+window.addEventListener("resize", setRealViewportHeight);
+window.addEventListener("orientationchange", () => setTimeout(setRealViewportHeight, 200));
+
 const chartEl = document.getElementById("chart");
 const chart = LightweightCharts.createChart(chartEl, {
-  layout: { background: { color: "#0b0e14" }, textColor: "#8993a6" },
-  grid: { vertLines: { color: "#171d29" }, horzLines: { color: "#171d29" } },
-  rightPriceScale: { borderColor: "#232b3a" },
-  timeScale: { borderColor: "#232b3a", timeVisible: true, secondsVisible: false },
-  crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+  layout: { background: { color: "#0b0e14" }, textColor: "#8993a6", fontSize: 11 },
+  grid: { vertLines: { color: "#161c28" }, horzLines: { color: "#161c28" } },
+  rightPriceScale: { borderColor: "#232b3a", scaleMargins: { top: 0.1, bottom: 0.15 } },
+  timeScale: {
+    borderColor: "#232b3a", timeVisible: true, secondsVisible: false,
+    barSpacing: 9, minBarSpacing: 3, rightOffset: 4, fixLeftEdge: true
+  },
+  crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  handleScroll: { vertTouchDrag: false },
+  autoSize: false
 });
 const candleSeries = chart.addCandlestickSeries({
   upColor: "#2dd4a7", downColor: "#f4577e",
   borderUpColor: "#2dd4a7", borderDownColor: "#f4577e",
-  wickUpColor: "#2dd4a7", wickDownColor: "#f4577e"
+  wickUpColor: "#2dd4a7", wickDownColor: "#f4577e",
+  priceLineColor: "#e8a33d", priceLineWidth: 1,
+  priceFormat: { type: "price", precision: 2, minMove: 0.01 }
 });
 let slLine = null, tpLine = null, entryLine = null;
 
-new ResizeObserver(entries => {
-  const { width, height } = entries[0].contentRect;
-  chart.resize(width, height);
-}).observe(chartEl);
+function resizeChartToContainer(){
+  const rect = chartEl.getBoundingClientRect();
+  if(rect.width > 0 && rect.height > 0){
+    chart.resize(rect.width, rect.height);
+  }
+}
+new ResizeObserver(() => resizeChartToContainer()).observe(chartEl);
+window.addEventListener("resize", resizeChartToContainer);
+window.addEventListener("orientationchange", () => setTimeout(resizeChartToContainer, 250));
+// Some mobile browsers report a 0-height container on first paint (before
+// the address bar settles) — re-measure a moment after load as a safety net.
+setTimeout(resizeChartToContainer, 300);
+setTimeout(resizeChartToContainer, 1000);
 
 /* ============================================================
    UI HELPERS
@@ -404,6 +431,14 @@ document.querySelectorAll(".panel-header").forEach(h => {
     h.parentElement.classList.toggle("collapsed");
   });
 });
+
+// Different markets need different decimal precision to look like a real
+// price feed (gold to 2dp, a forex pair to 5dp, crypto to 2dp).
+function applyPriceFormatForMarket(market){
+  let precision = 2, minMove = 0.01;
+  if(market === "AUD/USD"){ precision = 5; minMove = 0.00001; }
+  candleSeries.applyOptions({ priceFormat: { type: "price", precision, minMove } });
+}
 
 function setMode(mode){
   state.mode = mode;
@@ -425,6 +460,7 @@ async function loadLiveData(){
   stopPlayback();
   clearInterval(state.livePollTimer);
   setMode("live");
+  applyPriceFormatForMarket(state.market);
   showBanner("Loading live data…");
   try{
     const candles = await provider.fetchCandles(state.market, state.timeframe, 500, null);
@@ -457,6 +493,7 @@ async function pollLive(){
 
 async function loadReplayDataset(targetDate){
   clearInterval(state.livePollTimer);
+  applyPriceFormatForMarket(state.market);
   showBanner("Loading historical data…");
   try{
     // Fetch a window ending shortly after the target date so we have candles
@@ -786,4 +823,3 @@ function resetTradingState(){
 </script>
 </body>
 </html>
-
